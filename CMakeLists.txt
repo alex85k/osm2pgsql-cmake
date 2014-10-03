@@ -24,7 +24,7 @@ if (NOT OSM2PGSQL_ROOT)
 endif()
 
 if (NOT EXISTS OSM2PGSQL_ROOT)
-    execute_process(COMMAND git clone -b cpp_conversion https://github.com/MapQuest/osm2pgsql.git  ${OSM2PGSQL_ROOT})
+    execute_process(COMMAND git clone -b windows-patched https://github.com/alex85k/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 
 ADD_DEFINITIONS( -DOSM2PGSQL_DATADIR=${DATA_DIR} )
