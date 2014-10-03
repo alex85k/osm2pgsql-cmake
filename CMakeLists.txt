@@ -20,7 +20,7 @@ OPTION(BUILD_TESTS "Build with tests" OFF)
 SET(OSM2PGSQL_ROOT "" CACHE PATH "Location of osm2pgsql sources.")
 
 if (NOT OSM2PGSQL_ROOT)
-    set(OSM2PGSQL_ROOT osm2pgsql)
+    set(OSM2PGSQL_ROOT osm2pgsql-cpp)
 endif()
 
 if (NOT EXISTS OSM2PGSQL_ROOT)

@@ -5,7 +5,7 @@ set PGPASSWORD=
 set BOOST_ROOT=c:\boost
 set PREFIX=d:\libs18d
 set VARIANT=Debug
-set OSM2PGSQL=osm2pgsql
+set OSM2PGSQL=osm2pgsql-cpp
 
 set "CMAKE_PREFIX_PATH=%PREFIX%;%PSQL_ROOT%"
 
