@@ -16,25 +16,25 @@ OPTION(BUILD_TESTS "Build with tests" OFF)
 SET(OSM2PGSQL_ROOT "" CACHE PATH "Location of osm2pgsql sources.")
 
 if (NOT OSM2PGSQL_ROOT)
-    set(OSM2PGSQL_ROOT osm2pgsql-cpp)
+  set(OSM2PGSQL_ROOT osm2pgsql-cpp)
 endif()
 
 if (NOT EXISTS OSM2PGSQL_ROOT)
-    execute_process(COMMAND git clone -b windows-patched https://github.com/alex85k/osm2pgsql.git  ${OSM2PGSQL_ROOT})
+  execute_process(COMMAND git clone -b from-master https://github.com/alex85k/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
-   set(CMAKE_BUILD_TYPE=Release)
+  set(CMAKE_BUILD_TYPE=Release)
 endif()
 
 # Just in case user installed RPMs from http://yum.postgresql.org/
 list(APPEND PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/pgsql-9.3)
 
 if ( MSVC )
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX -wd4996)
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:30000000")
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX -wd4996)
+  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:30000000")
 else()
-    add_compile_options(-Wall)
+  add_compile_options(-Wall)
 endif()
 
 #############################################################
@@ -63,9 +63,6 @@ CHECK_TYPE_SIZE("off_t" SIZEOF_OFF_T)
 if (USE64BITID)
    ADD_DEFINITIONS( -DOSMID64 )
 endif()
-
-CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-
 
 #############################################################
 # Find necessary libraries
@@ -201,6 +198,8 @@ message("Libraries used to build: " ${LIBS})
 #############################################################
 # Build there library and executale file
 #############################################################
+
+CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if (NOT HAVE_UNISTD_H) 
    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/unistd.h "// empty header\n")
