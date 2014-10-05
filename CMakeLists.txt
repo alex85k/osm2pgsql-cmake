@@ -7,10 +7,6 @@ PROJECT(osm2pgsql)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-INCLUDE (CheckIncludeFiles)
-INCLUDE (CheckFunctionExists)
-INCLUDE (CheckTypeSize)
-
 SET(DATA_DIR \".\")
 SET(PACKAGE_VERSION \"0.85-cpp-win-cmake\")
 
@@ -27,8 +23,12 @@ if (NOT EXISTS OSM2PGSQL_ROOT)
     execute_process(COMMAND git clone -b windows-patched https://github.com/alex85k/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 
-ADD_DEFINITIONS( -DOSM2PGSQL_DATADIR=${DATA_DIR} )
-ADD_DEFINITIONS( -DVERSION=${PACKAGE_VERSION} )
+if (NOT CMAKE_BUILD_TYPE)
+   set(CMAKE_BUILD_TYPE=Release)
+endif()
+
+# Just in case user installed RPMs from http://yum.postgresql.org/
+list(APPEND PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/pgsql-9.3)
 
 if ( MSVC )
     add_definitions(-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX -wd4996)
@@ -36,6 +36,17 @@ if ( MSVC )
 else()
     add_compile_options(-Wall)
 endif()
+
+#############################################################
+# Detect available headers and set global compiler options
+#############################################################
+
+INCLUDE (CheckIncludeFiles)
+INCLUDE (CheckFunctionExists)
+INCLUDE (CheckTypeSize)
+
+ADD_DEFINITIONS( -DOSM2PGSQL_DATADIR=${DATA_DIR} )
+ADD_DEFINITIONS( -DVERSION=${PACKAGE_VERSION} )
 
 CHECK_INCLUDE_FILES (termios.h HAVE_TERMIOS_H)
 CHECK_INCLUDE_FILES (libgen.h HAVE_LIBGEN_H)
@@ -49,10 +60,19 @@ CHECK_FUNCTION_EXISTS(fork, HAVE_FORK)
 
 CHECK_TYPE_SIZE("off_t" SIZEOF_OFF_T)
 
+if (USE64BITID)
+   ADD_DEFINITIONS( -DOSMID64 )
+endif()
+
+CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
+
+#############################################################
+# Find necessary libraries
+#############################################################
+
 find_package(ZLIB)
-
 find_package(Threads)
-
 
 if ( ZLIB_FOUND )
     include_directories(${ZLIB_INCLUDE_DIR})
@@ -62,39 +82,49 @@ else(ZLIB)
 endif( ZLIB_FOUND )
 
 find_package(Protobuf REQUIRED)
-
 if ( BUILD_PBF )
-if ( PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY )
-    FIND_LIBRARY(PROTOBUF_C_LIBRARY protobuf-c)
-    FIND_PROGRAM(PROTOBUF_C_EXECUTABLE NAMES protoc-c
-                 DOC "The Protobuf-C Compiler" )
-    FIND_PATH(PROTOBUF_C_INCLUDE protobuf-c/protobuf-c.h)
-    if ( PROTOBUF_C_LIBRARY  AND PROTOBUF_C_EXECUTABLE AND PROTOBUF_C_INCLUDE) 
-      set(PBF_READER_SOURCES ${OSM2PGSQL_ROOT}/parse-pbf.cpp protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c)
+  if ( PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY )
+    FIND_LIBRARY(PROTOBUF_C_LIBRARY protobuf-c PATH_SUFFIXES lib lib64 )
+    FIND_PROGRAM(PROTOBUF_C_EXECUTABLE NAMES protoc-c DOC "The Protobuf-C Compiler" )
+    FIND_PATH(PROTOBUF_C_INCLUDE protobuf-c/protobuf-c.h  PATH_SUFFIXES "google")
 
-      add_custom_command(OUTPUT protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c 
-                   COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/fileformat.proto --c_out=${CMAKE_BINARY_DIR}
-                   COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/osmformat.proto --c_out=${CMAKE_BINARY_DIR}
-                   )
+    if (NOT PROTOBUF_C_INCLUDE)
+      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_INCLUDE)
+      message(FATAL_ERROR "Please specify the Protobuf-C include files location")
+    endif()
 
-      include_directories(${PROTOBUF_C_INCLUDE})
-      include_directories(${CMAKE_BINARY_DIR}/protobuf)
-      ADD_DEFINITIONS(-DBUILD_READER_PBF)
-    else()
+    if (NOT PROTOBUF_C_LIBRARY)
+      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_LIBRARY)
       message(FATAL_ERROR "Please specify the Protobuf-C library location")
     endif()
-else()
+
+    if (NOT PROTOBUF_C_EXECUTABLE)
+      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_EXECUTABLE)
+      message(FATAL_ERROR "Please specify the protoc-c executable location")
+    endif()
+
+    set(PBF_READER_SOURCES ${OSM2PGSQL_ROOT}/parse-pbf.cpp protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c)
+
+    add_custom_command(OUTPUT protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c
+      COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/fileformat.proto --c_out=${CMAKE_BINARY_DIR}
+      COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/osmformat.proto --c_out=${CMAKE_BINARY_DIR}
+    )
+
+    include_directories(${PROTOBUF_C_INCLUDE})
+    include_directories(${CMAKE_BINARY_DIR}/protobuf)
+    ADD_DEFINITIONS(-DBUILD_READER_PBF)
+  else()
     MARK_AS_ADVANCED(CLEAR PROTOBUF_INCLUDE_DIR PROTOBUF_LITE_LIBRARY )
     message(FATAL_ERROR "Please specify the Google PROTOBUF library dir")
-endif()
+  endif()
 endif()
 
 find_package(LibXml2)
 if ( LIBXML2_LIBRARIES )
-    include_directories(${LIBXML2_INCLUDE_DIR})
+  include_directories(${LIBXML2_INCLUDE_DIR})
 else()
-    MARK_AS_ADVANCED(CLEAR LIBXML2_INCLUDE_DIR LIBXML2_LIBRARIES)
-    message(FATAL_ERROR "Please, specify the LibXML2 library dir")
+  MARK_AS_ADVANCED(CLEAR LIBXML2_INCLUDE_DIR LIBXML2_LIBRARIES)
+  message(FATAL_ERROR "Please, specify the LibXML2 library dir")
 endif()
 
 find_package(BZip2)
@@ -105,20 +135,19 @@ if ( LUA_LIBRARIES )
 include_directories(${LUA_INCLUDE_DIR})
 set(HAVE_LUA 1)
 else()
-    MARK_AS_ADVANCED(CLEAR LUA_LIBRARIES LUA_LIBRARY)
-    message(FATAL_ERROR "Please, specify the Lua libraries and include dir")
+  MARK_AS_ADVANCED(CLEAR LUA_LIBRARIES LUA_LIBRARY)
+  message(FATAL_ERROR "Please, specify the Lua libraries and include dir")
 endif()
 
 # first try to find the version
 find_package(Boost 1.48 COMPONENTS system chrono atomic thread date_time filesystem REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
-
 find_package(PostgreSQL)
 if ( PostgreSQL_FOUND )
-    include_directories(${PostgreSQL_INCLUDE_DIRS})
+  include_directories(${PostgreSQL_INCLUDE_DIRS})
 else()
-    message(FATAL_ERROR "PostgreSQL not found, please install and give the path to CMAKE")
+  message(FATAL_ERROR "PostgreSQL not found, please install and give the path to CMAKE")
 endif()
 
 ##### Find GEOS Library 
@@ -146,11 +175,11 @@ endif()
 #####
 
 if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
-   find_path(GETOPT_INCLUDE_DIR getopt.h)
-   find_library(GETOPT_LIBRARY NAMES wingetopt )
-   if (GETOPT_INCLUDE_DIR AND GETOPT_LIBRARY)
-       include_directories(${GETOPT_INCLUDE_DIR})
-   endif()
+  find_path(GETOPT_INCLUDE_DIR getopt.h)
+  find_library(GETOPT_LIBRARY NAMES wingetopt )
+  if (GETOPT_INCLUDE_DIR AND GETOPT_LIBRARY)
+    include_directories(${GETOPT_INCLUDE_DIR})
+  endif()
 endif()
 
 if (BUILD_PBF)
@@ -159,24 +188,26 @@ if (BUILD_PBF)
   endif()
 endif()
 
+
+############### Libraries are found now ########################
+
 set (LIBS ${Boost_LIBRARIES} ${GEOS_LIBRARY} ${PROJ_LIBRARY} 
   ${LIBXML2_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} 
   ${LUA_LIBRARY} ${BZIP2_LIBRARY} ${PROTOBUF_C_LIBRARY} ${WIN_MORE_LIBS} ${ZLIB_LIBRARIES} )
 
+message("Libraries used to build: " ${LIBS})
+
+
+#############################################################
+# Build there library and executale file
+#############################################################
 
 if (NOT HAVE_UNISTD_H) 
    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/unistd.h "// empty header\n")
 endif()
 
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # for generated files
 include_directories(${OSM2PGSQL_ROOT}) # for
-
-if (USE64BITID)
-   ADD_DEFINITIONS( -DOSMID64 )
-endif()
-
-CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 set(osm2pgsql_lib_SRC
 	UTF8sanitizer.cpp
@@ -271,6 +302,16 @@ add_executable(osm2pgsql ${osm2pgsql_SOURCES})
 target_link_libraries(osm2pgsql_lib ${LIBS})
 target_link_libraries(osm2pgsql osm2pgsql_lib ${LIBS})
 
+get_property(EXE_LOCATION TARGET osm2pgsql PROPERTY LOCATION)
+
+# Copy executable to source folder for Python testing
+add_custom_command(TARGET osm2pgsql POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${EXE_LOCATION} ${OSM2PGSQL_ROOT})
+
+
+#############################################################
+# Build tests
+#############################################################
+
 if(BUILD_TESTS)
   enable_testing()
 
@@ -309,6 +350,14 @@ if(BUILD_TESTS)
          WORKING_DIRECTORY ${srcdir})
   set_tests_properties(test-parse-xml2 PROPERTIES ENVIRONMENT srcdir=${srcdir})
 endif()
+
+# Emulate make check
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -VV)
+
+
+#############################################################
+# Install
+#############################################################
 
 install(TARGETS osm2pgsql DESTINATION bin)
 install(TARGETS osm2pgsql_lib DESTINATION lib)
