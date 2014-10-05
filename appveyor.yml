@@ -1,0 +1,84 @@
+environment:
+  global:
+    PGUSER: postgres
+    PGPASSWORD: Password12!
+    BOOST_ROOT: c:\libs\boost
+    PREFIX: c:\libs
+    PSQL_ROOT: C:\Program Files\PostgreSQL\9.3
+    CMAKE_PREFIX_PATH: c:\libs;C:\Program Files\PostgreSQL\9.3
+    ACCOUNT:
+      secure: haKHy4KWVnBuCd6I3obXGMa9TjRa8oXFm9P+Pw6f5P0=
+  matrix:
+  - configuration: Release
+
+# branches to build
+branches:
+  # whitelist
+  only:
+    - master
+
+# Operating system (build VM template)
+
+os: Windows Server 2012 R2
+
+services:
+  - postgresql
+
+# scripts that are called at very beginning, before repo cloning
+init:
+  - git config --global core.autocrlf input
+
+# clone directory
+clone_folder: c:\build
+
+platform: x64
+
+install:
+  # by default, all script lines are interpreted as batch
+  - cd c:\
+  - mkdir libs
+  - curl -O https://dl.dropboxusercontent.com/u/63393258/libs_osm2pgsql_%Configuration%.7z
+  - 7z x libs_osm2pgsql_%Configuration%.7z | find ":"
+  - call c:\build\pgsetup.bat
+
+build_script:
+  - cd c:\build
+  - echo Running cmake...
+  - call "%VS120COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
+  - cmake -G "NMake Makefiles" -DBOOST_ROOT=%BOOST_ROOT% -DCMAKE_BUILD_TYPE=%Configuration% -DCMAKE_INSTALL_PREFIX=%PREFIX% -DBoost_USE_STATIC_LIBS=ON -DBUILD_PBF=ON -DBUILD_TESTS=ON
+  - nmake
+  - mkdir osm2pgsql-cpp-bin
+  - copy /y *.exe osm2pgsql-cpp-bin
+  - copy /y osm2pgsql-cpp\default.style osm2pgsql-cpp-bin
+  - copy /y osm2pgsql-cpp\style.lua osm2pgsql-cpp-bin
+  - copy /y %PREFIX%\bin\libxml2.dll osm2pgsql-cpp-bin
+  - copy /y %PREFIX%\bin\lua.dll osm2pgsql-cpp-bin
+  - copy /y %PREFIX%\bin\geos.dll osm2pgsql-cpp-bin
+  - copy /y "%PSQL_ROOT%\bin\libpq.dll" osm2pgsql-cpp-bin
+  - copy /y "%PSQL_ROOT%\bin\libintl-8.dll" osm2pgsql-cpp-bin
+  - copy /y "%PSQL_ROOT%\bin\libeay32.dll" osm2pgsql-cpp-bin
+  - copy /y "%PSQL_ROOT%\bin\ssleay32.dll" osm2pgsql-cpp-bin
+
+
+after_build:
+  - 7z a c:\build\osm2pgsql_%Configuration%.zip osm2pgsql-cpp-bin -tzip
+
+#test: off
+test_script:
+  - set PATH=c:\build\osm2pgsql-cpp-bin;%PATH%
+  - cd c:\build
+  - ctest -VV -E regression
+
+deploy_script:
+  - cd c:\build
+  - curl -T osm2pgsql_%Configuration%.zip --user %ACCOUNT% https://webdav.yandex.ru/libs/osm2pgsql_%Configuration%.zip
+
+artifacts:
+  - path: osm2pgsql_Release.zip
+    name: osm2pgsql_Release.zip
+
+# notifications:
+#   - provider: HipChat
+#     auth_token:
+#       secure: boLE7BjcahdIUxv9jkN7U3F8iOASF+MkhtctlVoWJoo=
+#     room: Directions
