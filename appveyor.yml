@@ -6,6 +6,7 @@ environment:
     PREFIX: c:\libs
     PSQL_ROOT: C:\Program Files\PostgreSQL\9.3
     CMAKE_PREFIX_PATH: c:\libs;C:\Program Files\PostgreSQL\9.3
+    PYTHONPATH: c:\libs
     ACCOUNT:
       secure: haKHy4KWVnBuCd6I3obXGMa9TjRa8oXFm9P+Pw6f5P0=
   matrix:
@@ -39,7 +40,6 @@ install:
   - mkdir libs
   - curl -O https://dl.dropboxusercontent.com/u/63393258/libs_osm2pgsql_%Configuration%.7z
   - 7z x libs_osm2pgsql_%Configuration%.7z | find ":"
-  - call c:\build\pgsetup.bat
 
 build_script:
   - cd c:\build
@@ -65,6 +65,7 @@ after_build:
 
 #test: off
 test_script:
+  - call c:\build\pgsetup.bat
   - set PATH=c:\build\osm2pgsql-cpp-bin;%PATH%
   - cd c:\build
   - ctest -VV -E regression
