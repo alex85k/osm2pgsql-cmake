@@ -20,7 +20,7 @@ if (NOT OSM2PGSQL_ROOT)
 endif()
 
 if (NOT EXISTS OSM2PGSQL_ROOT)
-  execute_process(COMMAND git clone -b from-master https://github.com/alex85k/osm2pgsql.git  ${OSM2PGSQL_ROOT})
+  execute_process(COMMAND git clone -b cpp_conversion https://github.com/MapQuest/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
