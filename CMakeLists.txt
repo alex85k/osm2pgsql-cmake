@@ -215,7 +215,6 @@ include_directories(${OSM2PGSQL_ROOT}) # for
 set(osm2pgsql_lib_SRC
 	UTF8sanitizer.cpp
 	binarysearcharray.cpp
-	buffer.cpp
 	expire-tiles.cpp
 	geometry-builder.cpp
 	geometry-processor.cpp
@@ -236,7 +235,6 @@ set(osm2pgsql_lib_SRC
 	output-pgsql.cpp
 	parse.cpp
 	parse-o5m.cpp
-	parse-primitive.cpp
 	parse-xml2.cpp
 	pgsql.cpp
 	pgsql-id-tracker.cpp
@@ -278,10 +276,10 @@ SET (osm2pgsql_SRC
 	output-null.hpp
 	output-pgsql.hpp
 	output.hpp
+	osmdata.hpp
 	parse.hpp
 	parse-o5m.hpp
 	parse-pbf.hpp
-	parse-primitive.hpp
 	parse-xml2.hpp
 	pgsql.hpp
 	rb.hpp
@@ -329,6 +327,7 @@ if(BUILD_TESTS)
     test-output-multi-point
     test-output-multi-point-multi-table
     test-output-multi-polygon
+    test-output-pgsql
     test-pgsql-escape
     test-parse-options
     test-expire-tiles
