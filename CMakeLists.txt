@@ -214,7 +214,6 @@ include_directories(${OSM2PGSQL_ROOT}) # for
 
 set(osm2pgsql_lib_SRC
 	UTF8sanitizer.cpp
-	binarysearcharray.cpp
 	expire-tiles.cpp
 	geometry-builder.cpp
 	geometry-processor.cpp
@@ -247,7 +246,6 @@ set(osm2pgsql_lib_SRC
 	table.cpp
 	taginfo.cpp
 	tagtransform.cpp
-	text-tree.cpp
 	util.cpp
 	wildcmp.cpp
 )
@@ -259,7 +257,6 @@ list(APPEND osm2pgsql_lib_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/config.h ${PBF_REA
 
 SET (osm2pgsql_SRC 
    osm2pgsql.cpp
-   binarysearcharray.hpp
 	geometry-builder.hpp
 	expire-tiles.hpp
 	input.hpp
@@ -287,7 +284,6 @@ SET (osm2pgsql_SRC
 	sanitizer.hpp
 	sprompt.hpp
 	table.hpp
-	text-tree.hpp
 	util.hpp
 )
 
