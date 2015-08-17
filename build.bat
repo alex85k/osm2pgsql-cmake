@@ -29,7 +29,7 @@ mkdir osm2pgsql-cpp-bin
   copy /y "%PSQL_ROOT%\bin\ssleay32.dll" osm2pgsql-cpp-bin
 
 echo "Running tests - see build_testing.log..."
-set PATH=%CD%\osm2pgsql-cpp-bin;%PATH%
+set "PATH=%CD%\osm2pgsql-cpp-bin;C:\Python27;%PATH%"
 copy /y osm2pgsql.exe %OSM2PGSQL%\
 ctest -VV >build_testing.log 2>&1
 if ERRORLEVEL 1 exit /b 1
