@@ -8,6 +8,11 @@
 #cmakedefine HAVE_LUA
 #cmakedefine SIZEOF_OFF_T ${SIZEOF_OFF_T}
 
-#ifdef _MSC_VER
+#if _MSC_VER < 1900
 #define snprintf _snprintf
+#endif
+
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
 #endif

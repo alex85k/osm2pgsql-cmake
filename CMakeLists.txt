@@ -8,10 +8,9 @@ PROJECT(osm2pgsql)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 SET(DATA_DIR \".\")
-SET(PACKAGE_VERSION \"0.85-cpp-win-cmake\")
+SET(PACKAGE_VERSION \"0.88.1-cpp-win-cmake\")
 
 OPTION(USE64BITID "Build with 64 bit OSM ID" ON)
-OPTION(BUILD_PBF "Build with PBF format support" ON)
 OPTION(BUILD_TESTS "Build with tests" OFF)
 SET(OSM2PGSQL_ROOT "" CACHE PATH "Location of osm2pgsql sources.")
 
@@ -28,7 +27,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Just in case user installed RPMs from http://yum.postgresql.org/
-list(APPEND PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/pgsql-9.3)
+list(APPEND PostgreSQL_ADDITIONAL_SEARCH_PATHS /usr/pgsql-9.3 /usr/pgsql-9.4)
 
 if ( MSVC )
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX -wd4996)
@@ -47,6 +46,7 @@ INCLUDE (CheckTypeSize)
 
 ADD_DEFINITIONS( -DOSM2PGSQL_DATADIR=${DATA_DIR} )
 ADD_DEFINITIONS( -DVERSION=${PACKAGE_VERSION} )
+ADD_DEFINITIONS( -DFIXED_POINT )
 
 CHECK_INCLUDE_FILES (termios.h HAVE_TERMIOS_H)
 CHECK_INCLUDE_FILES (libgen.h HAVE_LIBGEN_H)
@@ -83,53 +83,19 @@ else(ZLIB)
 endif( ZLIB_FOUND )
 
 find_package(Protobuf REQUIRED)
-if ( BUILD_PBF )
-  if ( PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY )
-    FIND_LIBRARY(PROTOBUF_C_LIBRARY protobuf-c PATH_SUFFIXES lib lib64 )
-    FIND_PROGRAM(PROTOBUF_C_EXECUTABLE NAMES protoc-c DOC "The Protobuf-C Compiler" )
-    FIND_PATH(PROTOBUF_C_INCLUDE protobuf-c/protobuf-c.h  PATH_SUFFIXES "google")
+include_directories(${PROTOBUF_INCLUDE_DIR})
 
-    if (NOT PROTOBUF_C_INCLUDE)
-      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_INCLUDE)
-      message(FATAL_ERROR "Please specify the Protobuf-C include files location")
-    endif()
-
-    if (NOT PROTOBUF_C_LIBRARY)
-      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_LIBRARY)
-      message(FATAL_ERROR "Please specify the Protobuf-C library location")
-    endif()
-
-    if (NOT PROTOBUF_C_EXECUTABLE)
-      MARK_AS_ADVANCED(CLEAR PROTOBUF_C_EXECUTABLE)
-      message(FATAL_ERROR "Please specify the protoc-c executable location")
-    endif()
-
-    set(PBF_READER_SOURCES ${OSM2PGSQL_ROOT}/parse-pbf.cpp protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c)
-
-    add_custom_command(OUTPUT protobuf/fileformat.pb-c.c protobuf/osmformat.pb-c.c
-      COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/fileformat.proto --c_out=${CMAKE_BINARY_DIR}
-      COMMAND ${PROTOBUF_C_EXECUTABLE} -I${OSM2PGSQL_ROOT} ${OSM2PGSQL_ROOT}/protobuf/osmformat.proto --c_out=${CMAKE_BINARY_DIR}
-    )
-
-    include_directories(${PROTOBUF_C_INCLUDE})
-    include_directories(${CMAKE_BINARY_DIR}/protobuf)
-    ADD_DEFINITIONS(-DBUILD_READER_PBF)
-  else()
-    MARK_AS_ADVANCED(CLEAR PROTOBUF_INCLUDE_DIR PROTOBUF_LITE_LIBRARY )
-    message(FATAL_ERROR "Please specify the Google PROTOBUF library dir")
-  endif()
-endif()
-
-find_package(LibXml2)
-if ( LIBXML2_LIBRARIES )
-  include_directories(${LIBXML2_INCLUDE_DIR})
-else()
-  MARK_AS_ADVANCED(CLEAR LIBXML2_INCLUDE_DIR LIBXML2_LIBRARIES)
-  message(FATAL_ERROR "Please, specify the LibXML2 library dir")
-endif()
+find_package(OSMPBF REQUIRED)
+include_directories(${OSMPBF_INCLUDE_DIR})
 
 find_package(BZip2)
 include_directories(${BZIP2_INCLUDE_DIR})
+
+find_package(EXPAT)
+include_directories(${EXPAT_INCLUDE_DIR})
+
+find_package(ZLIB)
+include_directories(${ZLIB_INCLUDE_DIR})
 
 find_package(Lua52)
 if ( LUA_LIBRARIES )
@@ -183,18 +149,15 @@ if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
   endif()
 endif()
 
-if (BUILD_PBF)
-  if (WIN32)
-   SET(WIN_MORE_LIBS ws2_32)
-  endif()
+if (WIN32)
+  SET(WIN_MORE_LIBS ws2_32)
 endif()
-
 
 ############### Libraries are found now ########################
 
-set (LIBS ${Boost_LIBRARIES} ${GEOS_LIBRARY} ${PROJ_LIBRARY} 
-  ${LIBXML2_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} 
-  ${LUA_LIBRARY} ${BZIP2_LIBRARY} ${PROTOBUF_C_LIBRARY} ${WIN_MORE_LIBS} ${ZLIB_LIBRARIES} )
+set (LIBS ${Boost_LIBRARIES} ${GEOS_LIBRARY}  ${OSMPBF_LIBRARY} ${PROTOBUF_LIBRARY} 
+  ${PROJ_LIBRARY} ${EXPAT_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} 
+  ${LUA_LIBRARY} ${BZIP2_LIBRARY} ${WIN_MORE_LIBS} ${ZLIB_LIBRARIES} )
 
 message("Libraries used to build: " ${LIBS})
 
@@ -211,15 +174,13 @@ endif()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # for generated files
 include_directories(${OSM2PGSQL_ROOT}) # for
+include_directories(${OSM2PGSQL_ROOT}/contrib/libosmium) # for
 
 set(osm2pgsql_lib_SRC
-	UTF8sanitizer.cpp
 	expire-tiles.cpp
 	geometry-builder.cpp
 	geometry-processor.cpp
 	id-tracker.cpp
-	input.cpp
-	keyvals.cpp
 	middle.cpp
 	middle-pgsql.cpp
 	middle-ram.cpp
@@ -234,13 +195,11 @@ set(osm2pgsql_lib_SRC
 	output-pgsql.cpp
 	parse.cpp
 	parse-o5m.cpp
-	parse-xml2.cpp
+	parse-osmium.cpp
 	pgsql.cpp
-	pgsql-id-tracker.cpp
 	processor-line.cpp
 	processor-point.cpp
 	processor-polygon.cpp
-	rb.cpp
 	reprojection.cpp
 	sprompt.cpp
 	table.cpp
@@ -253,14 +212,12 @@ set(osm2pgsql_lib_SRC
 foreach(src ${osm2pgsql_lib_SRC})
    list(APPEND osm2pgsql_lib_SOURCES ${OSM2PGSQL_ROOT}/${src})
 endforeach()
-list(APPEND osm2pgsql_lib_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/config.h ${PBF_READER_SOURCES})
+list(APPEND osm2pgsql_lib_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 SET (osm2pgsql_SRC 
-   osm2pgsql.cpp
+        osm2pgsql.cpp
 	geometry-builder.hpp
 	expire-tiles.hpp
-	input.hpp
-	keyvals.hpp
 	middle-pgsql.hpp
 	middle-ram.hpp
 	middle.hpp
@@ -276,21 +233,23 @@ SET (osm2pgsql_SRC
 	osmdata.hpp
 	parse.hpp
 	parse-o5m.hpp
-	parse-pbf.hpp
-	parse-xml2.hpp
+	parse-osmium.hpp
 	pgsql.hpp
-	rb.hpp
 	reprojection.hpp
-	sanitizer.hpp
 	sprompt.hpp
 	table.hpp
+	taginfo.hpp
+	taginfo_impl.hpp
+        tagtransform.hpp
+	table.hpp
+        wildcmp.hpp
 	util.hpp
 )
 
 foreach(src ${osm2pgsql_SRC})
    list(APPEND osm2pgsql_SOURCES ${OSM2PGSQL_ROOT}/${src})
 endforeach()
-list(APPEND osm2pgsql_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/config.h ${PBF_READER_SOURCES})
+list(APPEND osm2pgsql_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 add_library(osm2pgsql_lib STATIC ${osm2pgsql_lib_SOURCES})
 set_target_properties(osm2pgsql_lib PROPERTIES OUTPUT_NAME osm2pgsql)
@@ -299,7 +258,8 @@ add_executable(osm2pgsql ${osm2pgsql_SOURCES})
 target_link_libraries(osm2pgsql_lib ${LIBS})
 target_link_libraries(osm2pgsql osm2pgsql_lib ${LIBS})
 
-get_property(EXE_LOCATION TARGET osm2pgsql PROPERTY LOCATION)
+set(EXE_LOCATION $<TARGET_FILE:osm2pgsql>)
+
 
 # Copy executable to source folder for Python testing
 add_custom_command(TARGET osm2pgsql POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${EXE_LOCATION} ${OSM2PGSQL_ROOT})
@@ -316,17 +276,26 @@ if(BUILD_TESTS)
   add_library(middle-tests STATIC ${OSM2PGSQL_ROOT}/tests/middle-tests.cpp)
 
   set(TESTS 
-    test-parse-xml2
-    test-middle-ram
-    test-middle-pgsql
-    test-output-multi-line
-    test-output-multi-point
-    test-output-multi-point-multi-table
-    test-output-multi-polygon
-    test-output-pgsql
-    test-pgsql-escape
-    test-parse-options
-    test-expire-tiles
+test-expire-tiles                   
+test-hstore-match-only              
+test-middle-flat                    
+test-middle-pgsql                   
+test-middle-ram                     
+test-options-database               
+test-options-parse                  
+test-output-multi-line-storage      
+test-output-multi-line              
+test-output-multi-point-multi-table 
+test-output-multi-point             
+test-output-multi-poly-trivial      
+test-output-multi-polygon           
+test-output-multi-tags              
+test-output-pgsql-schema            
+test-output-pgsql-tablespace        
+test-output-pgsql-z_order           
+test-output-pgsql                   
+test-parse-xml2                     
+test-pgsql-escape                   
   )
 
   set(DART_TESTING_TIMEOUT 2000)
@@ -343,8 +312,6 @@ if(BUILD_TESTS)
   endforeach(test_name)
 
   add_test(NAME regression-test-pbf COMMAND python tests/regression-test.py -f tests/liechtenstein-2013-08-03.osm.pbf 
-         WORKING_DIRECTORY ${srcdir})
-  add_test(NAME regression-test-bz2 COMMAND python tests/regression-test.py -f tests/liechtenstein-2013-08-03.osm.bz2 
          WORKING_DIRECTORY ${srcdir})
   set_tests_properties(test-parse-xml2 PROPERTIES ENVIRONMENT srcdir=${srcdir})
 endif()
