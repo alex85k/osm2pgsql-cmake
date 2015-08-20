@@ -1,7 +1,7 @@
 setlocal
 SET "PATH=C:\Program Files\PostgreSQL\9.4\bin;%PATH%"
 set PGUSER=postgres
-set PGPASSWORD=admin
+set PGPASSWORD=Password12!
 mkdir temp
 cacls temp /T /E /G Users:F
 cacls temp /T /E /G "Network Service":F

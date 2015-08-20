@@ -8,7 +8,6 @@ PROJECT(osm2pgsql)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 SET(DATA_DIR \".\")
-SET(PACKAGE_VERSION \"0.88.1-cpp-win-cmake\")
 
 OPTION(USE64BITID "Build with 64 bit OSM ID" ON)
 OPTION(BUILD_TESTS "Build with tests" OFF)
@@ -21,6 +20,9 @@ endif()
 if (NOT EXISTS OSM2PGSQL_ROOT)
   execute_process(COMMAND git clone https://github.com/openstreetmap/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
+execute_process (COMMAND git describe WORKING_DIRECTORY ${OSM2PGSQL_ROOT} OUTPUT_VARIABLE PACKAGE_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+set(PACKAGE_VERSION \"${PACKAGE_VERSION}\")
+message(STATUS "Building osm2pgsql ${PACKAGE_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE=Release)
@@ -72,30 +74,8 @@ endif()
 # Find necessary libraries
 #############################################################
 
-find_package(ZLIB)
-find_package(Threads)
-
-if ( ZLIB_FOUND )
-    include_directories(${ZLIB_INCLUDE_DIR})
-else(ZLIB)
-    MARK_AS_ADVANCED(CLEAR ZLIB_LIBRARY ZLIB_INCLUDE_DIR)
-    message(FATAL_ERROR "Please, specify the ZLIB includes directory and the library file")
-endif( ZLIB_FOUND )
-
-find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIR})
-
-find_package(OSMPBF REQUIRED)
-include_directories(${OSMPBF_INCLUDE_DIR})
-
-find_package(BZip2)
-include_directories(${BZIP2_INCLUDE_DIR})
-
-find_package(EXPAT)
-include_directories(${EXPAT_INCLUDE_DIR})
-
-find_package(ZLIB)
-include_directories(${ZLIB_INCLUDE_DIR})
+find_package(Osmium REQUIRED COMPONENTS io geos proj)
+include_directories(${OSMIUM_INCLUDE_DIRS})
 
 find_package(Lua52)
 if ( LUA_LIBRARIES )
@@ -107,7 +87,7 @@ else()
 endif()
 
 # first try to find the version
-find_package(Boost 1.48 COMPONENTS system chrono atomic thread date_time filesystem REQUIRED)
+find_package(Boost 1.48 REQUIRED COMPONENTS system chrono filesystem thread date_time)
 include_directories(${Boost_INCLUDE_DIR})
 
 find_package(PostgreSQL)
@@ -116,30 +96,6 @@ if ( PostgreSQL_FOUND )
 else()
   message(FATAL_ERROR "PostgreSQL not found, please install and give the path to CMAKE")
 endif()
-
-##### Find GEOS Library 
-find_path(GEOS_INCLUDE_DIR geos/geom.h)
-find_library(GEOS_LIBRARY NAMES geos)
-if(GEOS_INCLUDE_DIR AND GEOS_LIBRARY)
-  MESSAGE( STATUS "GEOS library found")
-  SET(GEOS_FOUND 1)
-  include_directories(${GEOS_INCLUDE_DIR})
-else()
-  MESSAGE( STATUS "GEOS library not found")
-endif()
-#####
-
-##### Find Proj.4 Library 
-find_path(PROJ_INCLUDE_DIR proj_api.h)
-find_library(PROJ_LIBRARY NAMES proj)
-if(PROJ_INCLUDE_DIR AND PROJ_LIBRARY)
-  MESSAGE( STATUS "PROJ library found")
-  SET(GEOS_FOUND 1)
-  include_directories(${PROJ_INCLUDE_DIR})
-else()
-  MESSAGE( STATUS "PROJ library not found")
-endif()
-#####
 
 if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
   find_path(GETOPT_INCLUDE_DIR getopt.h)
@@ -155,9 +111,8 @@ endif()
 
 ############### Libraries are found now ########################
 
-set (LIBS ${Boost_LIBRARIES} ${GEOS_LIBRARY}  ${OSMPBF_LIBRARY} ${PROTOBUF_LIBRARY} 
-  ${PROJ_LIBRARY} ${EXPAT_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} 
-  ${LUA_LIBRARY} ${BZIP2_LIBRARY} ${WIN_MORE_LIBS} ${ZLIB_LIBRARIES} )
+
+set (LIBS ${Boost_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} ${LUA_LIBRARY} ${WIN_MORE_LIBS} ${OSMIUM_LIBRARIES})
 
 message("Libraries used to build: " ${LIBS})
 

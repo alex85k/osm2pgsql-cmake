@@ -15,5 +15,3 @@
 #ifdef _MSC_VER
 typedef __int64 ssize_t;
 #endif
-
-#define WIN32_LEAN_AND_MEAN

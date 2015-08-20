@@ -2,7 +2,7 @@ call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
 set "PSQL_ROOT=C:\Program Files\PostgreSQL\9.4"
 
 set PGUSER=postgres
-set PGPASSWORD=admin
+set PGPASSWORD=Password12!
 set BOOST_ROOT=d:\boost
 set PREFIX=d:\libs19r
 set VARIANT=Release
