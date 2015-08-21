@@ -1,6 +1,6 @@
 This code allows to compile osm2pgsql using [CMake](http://www.cmake.org). To get this
 working you need osm2pgsql (at least verion 0.88.0), it's dependencies, and CMake
-(at least version 2.8).
+(at least version 3.0).
 
 To build osm2pgsql using the bundled copy of libosmium do it like this:
 

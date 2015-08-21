@@ -1,7 +1,7 @@
 SET(PACKAGE osm2pgsql)
 SET(PACKAGE_NAME osm2pgsql)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
 
 PROJECT(osm2pgsql)
 
@@ -87,7 +87,7 @@ endif()
 find_package(Osmium REQUIRED COMPONENTS io geos proj)
 include_directories(${OSMIUM_INCLUDE_DIRS})
 
-find_package(Lua52)
+find_package(Lua 5.2)
 if ( LUA_LIBRARIES )
 include_directories(${LUA_INCLUDE_DIR})
 set(HAVE_LUA 1)
