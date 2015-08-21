@@ -17,7 +17,7 @@ if (NOT OSM2PGSQL_ROOT)
   set(OSM2PGSQL_ROOT osm2pgsql-cpp)
 endif()
 
-if (NOT EXISTS OSM2PGSQL_ROOT)
+if (NOT EXISTS "${OSM2PGSQL_ROOT}")
   execute_process(COMMAND git clone https://github.com/openstreetmap/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 execute_process (COMMAND git describe WORKING_DIRECTORY ${OSM2PGSQL_ROOT} OUTPUT_VARIABLE PACKAGE_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
