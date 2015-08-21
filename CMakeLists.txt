@@ -40,6 +40,8 @@ else()
   add_compile_options(-Wall)
 endif()
 
+option(EXTERNAL_LIBOSMIUM "Do not use the bundled libosmium" OFF)
+
 #############################################################
 # Detect available headers and set global compiler options
 #############################################################
@@ -75,6 +77,10 @@ endif()
 #############################################################
 # Find necessary libraries
 #############################################################
+
+if (NOT EXTERNAL_LIBOSMIUM)
+	set(OSMIUM_INCLUDE_DIR "${OSM2PGSQL_ROOT}/contrib/libosmium")
+endif()
 
 find_package(Osmium REQUIRED COMPONENTS io geos proj)
 include_directories(${OSMIUM_INCLUDE_DIRS})
