@@ -1,11 +1,13 @@
-#cmakedefine HAVE_TERMIOS_H 1
-#cmakedefine HAVE_LIBGEN_H 1
 #cmakedefine HAVE_FORK 1
 #cmakedefine HAVE_LSEEK64 1
 #cmakedefine HAVE_LUA 1
 #cmakedefine HAVE_POSIX_FADVISE 1
 #cmakedefine HAVE_POSIX_FALLOCATE 1
 #cmakedefine HAVE_SYNC_FILE_RANGE 1
+#cmakedefine HAVE_TERMIOS_H 1
+#cmakedefine HAVE_LIBGEN_H 1
+#cmakedefine HAVE_SYS_WAIT_H 1
+#cmakedefine HAVE_UNISTD_H 1
 #cmakedefine SIZEOF_OFF_T ${SIZEOF_OFF_T}
 
 #if _MSC_VER < 1900
