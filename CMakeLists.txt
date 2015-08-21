@@ -95,6 +95,8 @@ include_directories(${Boost_INCLUDE_DIR})
 find_package(PostgreSQL REQUIRED)
 include_directories(${PostgreSQL_INCLUDE_DIRS})
 
+find_package(Threads)
+
 if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
   find_path(GETOPT_INCLUDE_DIR getopt.h)
   find_library(GETOPT_LIBRARY NAMES wingetopt )
@@ -122,6 +124,7 @@ message("Libraries used to build: " ${LIBS})
 # Build there library and executale file
 #############################################################
 
+set(HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
 CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if (NOT HAVE_UNISTD_H) 

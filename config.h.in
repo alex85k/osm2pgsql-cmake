@@ -3,6 +3,7 @@
 #cmakedefine HAVE_LUA 1
 #cmakedefine HAVE_POSIX_FADVISE 1
 #cmakedefine HAVE_POSIX_FALLOCATE 1
+#cmakedefine HAVE_PTHREAD 1
 #cmakedefine HAVE_SYNC_FILE_RANGE 1
 #cmakedefine HAVE_TERMIOS_H 1
 #cmakedefine HAVE_LIBGEN_H 1
