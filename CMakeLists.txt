@@ -9,7 +9,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 SET(DATA_DIR \".\")
 
-OPTION(USE64BITID "Build with 64 bit OSM ID" ON)
 OPTION(BUILD_TESTS "Build with tests" OFF)
 SET(OSM2PGSQL_ROOT "" CACHE PATH "Location of osm2pgsql sources.")
 
@@ -71,10 +70,6 @@ CHECK_TYPE_SIZE("off_t" SIZEOF_OFF_T)
 
 if (NOT WIN32 AND NOT APPLE AND NOT HAVE_LSEEK64 AND NOT SIZEOF_OFF_T EQUAL 8)
 	message(FATAL_ERROR "Flat nodes cache requires a 64 bit capable seek")
-endif()
-
-if (USE64BITID)
-   ADD_DEFINITIONS( -DOSMID64 )
 endif()
 
 #############################################################
