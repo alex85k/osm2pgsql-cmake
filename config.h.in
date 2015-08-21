@@ -11,11 +11,11 @@
 #cmakedefine HAVE_UNISTD_H 1
 #cmakedefine SIZEOF_OFF_T ${SIZEOF_OFF_T}
 
+#ifdef _MSC_VER
 #if _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
 
-#ifdef _MSC_VER
 typedef __int64 ssize_t;
 #endif
 
