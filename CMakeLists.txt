@@ -66,6 +66,10 @@ CHECK_FUNCTION_EXISTS(fork, HAVE_FORK)
 
 CHECK_TYPE_SIZE("off_t" SIZEOF_OFF_T)
 
+if (NOT WIN32 AND NOT APPLE AND NOT HAVE_LSEEK64 AND NOT SIZEOF_OFF_T EQUAL 8)
+	message(FATAL_ERROR "Flat nodes cache requires a 64 bit capable seek")
+endif()
+
 if (USE64BITID)
    ADD_DEFINITIONS( -DOSMID64 )
 endif()
