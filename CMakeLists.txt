@@ -82,20 +82,15 @@ if ( LUA_LIBRARIES )
 include_directories(${LUA_INCLUDE_DIR})
 set(HAVE_LUA 1)
 else()
-  MARK_AS_ADVANCED(CLEAR LUA_LIBRARIES LUA_LIBRARY)
-  message(FATAL_ERROR "Please, specify the Lua libraries and include dir")
+  message(STATUS "lua libraries not found. You will NOT be able to use lua scripts for tag transform.")
 endif()
 
 # first try to find the version
 find_package(Boost 1.48 REQUIRED COMPONENTS system chrono filesystem thread date_time)
 include_directories(${Boost_INCLUDE_DIR})
 
-find_package(PostgreSQL)
-if ( PostgreSQL_FOUND )
-  include_directories(${PostgreSQL_INCLUDE_DIRS})
-else()
-  message(FATAL_ERROR "PostgreSQL not found, please install and give the path to CMAKE")
-endif()
+find_package(PostgreSQL REQUIRED)
+include_directories(${PostgreSQL_INCLUDE_DIRS})
 
 if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
   find_path(GETOPT_INCLUDE_DIR getopt.h)
@@ -112,7 +107,10 @@ endif()
 ############### Libraries are found now ########################
 
 
-set (LIBS ${Boost_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} ${LUA_LIBRARY} ${WIN_MORE_LIBS} ${OSMIUM_LIBRARIES})
+set (LIBS ${Boost_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} ${WIN_MORE_LIBS} ${OSMIUM_LIBRARIES})
+if (LUA_LIBRARIES)
+  list(APPEND LIBS ${LUA_LIBRARIES})
+endif()
 
 message("Libraries used to build: " ${LIBS})
 
