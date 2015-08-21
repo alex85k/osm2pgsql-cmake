@@ -15,3 +15,5 @@
 #ifdef _MSC_VER
 typedef __int64 ssize_t;
 #endif
+
+#define VERSION "@PACKAGE_VERSION@"
