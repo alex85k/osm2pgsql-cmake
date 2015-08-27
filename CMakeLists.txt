@@ -9,7 +9,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 SET(DATA_DIR \".\")
 
-OPTION(USE64BITID "Build with 64 bit OSM ID" ON)
 OPTION(BUILD_TESTS "Build with tests" OFF)
 SET(OSM2PGSQL_ROOT "" CACHE PATH "Location of osm2pgsql sources.")
 
@@ -17,12 +16,15 @@ if (NOT OSM2PGSQL_ROOT)
   set(OSM2PGSQL_ROOT osm2pgsql-cpp)
 endif()
 
-if (NOT EXISTS OSM2PGSQL_ROOT)
+if (NOT EXISTS "${OSM2PGSQL_ROOT}")
   execute_process(COMMAND git clone https://github.com/openstreetmap/osm2pgsql.git  ${OSM2PGSQL_ROOT})
 endif()
 execute_process (COMMAND git describe WORKING_DIRECTORY ${OSM2PGSQL_ROOT} OUTPUT_VARIABLE PACKAGE_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(PACKAGE_VERSION \"${PACKAGE_VERSION}\")
 message(STATUS "Building osm2pgsql ${PACKAGE_VERSION}")
+
+if (PACKAGE_VERSION VERSION_LESS 0.88.0)
+	message(FATAL_ERROR "osm2pgsql sources of version 0.88.0 or greater required (found ${PACKAGE_VERSION})")
+endif()
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE=Release)
@@ -38,6 +40,8 @@ else()
   add_compile_options(-Wall)
 endif()
 
+option(EXTERNAL_LIBOSMIUM "Do not use the bundled libosmium" OFF)
+
 #############################################################
 # Detect available headers and set global compiler options
 #############################################################
@@ -47,32 +51,36 @@ INCLUDE (CheckFunctionExists)
 INCLUDE (CheckTypeSize)
 
 ADD_DEFINITIONS( -DOSM2PGSQL_DATADIR=${DATA_DIR} )
-ADD_DEFINITIONS( -DVERSION=${PACKAGE_VERSION} )
 ADD_DEFINITIONS( -DFIXED_POINT )
 
 CHECK_INCLUDE_FILES (termios.h HAVE_TERMIOS_H)
 CHECK_INCLUDE_FILES (libgen.h HAVE_LIBGEN_H)
 CHECK_INCLUDE_FILES (unistd.h HAVE_UNISTD_H)
+CHECK_INCLUDE_FILES (sys/wait.h HAVE_SYS_WAIT_H)
 
 if (WIN32)
   set(HAVE_LIBGEN_H FALSE)
 endif()
 
-CHECK_FUNCTION_EXISTS(lseek64, HAVE_LSEEK64)
-CHECK_FUNCTION_EXISTS(posix_fallocate, HAVE_POSIX_FALLOCATE)
-CHECK_FUNCTION_EXISTS(posix_fadvice, HAVE_POSIX_FADVICE)
-CHECK_FUNCTION_EXISTS(sync_file_range, HAVE_SYNC_FILE_RANGE)
-CHECK_FUNCTION_EXISTS(fork, HAVE_FORK)
+CHECK_FUNCTION_EXISTS(lseek64 HAVE_LSEEK64)
+CHECK_FUNCTION_EXISTS(posix_fallocate HAVE_POSIX_FALLOCATE)
+CHECK_FUNCTION_EXISTS(posix_fadvise HAVE_POSIX_FADVISE)
+CHECK_FUNCTION_EXISTS(sync_file_range HAVE_SYNC_FILE_RANGE)
+CHECK_FUNCTION_EXISTS(fork HAVE_FORK)
 
 CHECK_TYPE_SIZE("off_t" SIZEOF_OFF_T)
 
-if (USE64BITID)
-   ADD_DEFINITIONS( -DOSMID64 )
+if (NOT WIN32 AND NOT APPLE AND NOT HAVE_LSEEK64 AND NOT SIZEOF_OFF_T EQUAL 8)
+	message(FATAL_ERROR "Flat nodes cache requires a 64 bit capable seek")
 endif()
 
 #############################################################
 # Find necessary libraries
 #############################################################
+
+if (NOT EXTERNAL_LIBOSMIUM)
+	set(OSMIUM_INCLUDE_DIR "${OSM2PGSQL_ROOT}/contrib/libosmium")
+endif()
 
 find_package(Osmium REQUIRED COMPONENTS io geos proj)
 include_directories(${OSMIUM_INCLUDE_DIRS})
@@ -82,20 +90,17 @@ if ( LUA_LIBRARIES )
 include_directories(${LUA_INCLUDE_DIR})
 set(HAVE_LUA 1)
 else()
-  MARK_AS_ADVANCED(CLEAR LUA_LIBRARIES LUA_LIBRARY)
-  message(FATAL_ERROR "Please, specify the Lua libraries and include dir")
+  message(STATUS "lua libraries not found. You will NOT be able to use lua scripts for tag transform.")
 endif()
 
 # first try to find the version
 find_package(Boost 1.48 REQUIRED COMPONENTS system chrono filesystem thread date_time)
 include_directories(${Boost_INCLUDE_DIR})
 
-find_package(PostgreSQL)
-if ( PostgreSQL_FOUND )
-  include_directories(${PostgreSQL_INCLUDE_DIRS})
-else()
-  message(FATAL_ERROR "PostgreSQL not found, please install and give the path to CMAKE")
-endif()
+find_package(PostgreSQL REQUIRED)
+include_directories(${PostgreSQL_INCLUDE_DIRS})
+
+find_package(Threads)
 
 if(NOT CMAKE_COMPILER_IS_GNUCC AND WIN32)
   find_path(GETOPT_INCLUDE_DIR getopt.h)
@@ -112,7 +117,10 @@ endif()
 ############### Libraries are found now ########################
 
 
-set (LIBS ${Boost_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} ${LUA_LIBRARY} ${WIN_MORE_LIBS} ${OSMIUM_LIBRARIES})
+set (LIBS ${Boost_LIBRARIES} ${GETOPT_LIBRARY} ${PostgreSQL_LIBRARY} ${WIN_MORE_LIBS} ${OSMIUM_LIBRARIES})
+if (LUA_LIBRARIES)
+  list(APPEND LIBS ${LUA_LIBRARIES})
+endif()
 
 message("Libraries used to build: " ${LIBS})
 
@@ -121,6 +129,7 @@ message("Libraries used to build: " ${LIBS})
 # Build there library and executale file
 #############################################################
 
+set(HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
 CONFIGURE_FILE(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if (NOT HAVE_UNISTD_H) 
@@ -226,49 +235,7 @@ add_custom_command(TARGET osm2pgsql POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy 
 
 if(BUILD_TESTS)
   enable_testing()
-
-  add_library(common-pg STATIC ${OSM2PGSQL_ROOT}/tests/common-pg.cpp)
-  add_library(middle-tests STATIC ${OSM2PGSQL_ROOT}/tests/middle-tests.cpp)
-
-  set(TESTS 
-test-expire-tiles                   
-test-hstore-match-only              
-test-middle-flat                    
-test-middle-pgsql                   
-test-middle-ram                     
-test-options-database               
-test-options-parse                  
-test-output-multi-line-storage      
-test-output-multi-line              
-test-output-multi-point-multi-table 
-test-output-multi-point             
-test-output-multi-poly-trivial      
-test-output-multi-polygon           
-test-output-multi-tags              
-test-output-pgsql-schema            
-test-output-pgsql-tablespace        
-test-output-pgsql-z_order           
-test-output-pgsql                   
-test-parse-xml2                     
-test-pgsql-escape                   
-  )
-
-  set(DART_TESTING_TIMEOUT 2000)
-  include(Dart)
-
-
-  get_filename_component(srcdir ${OSM2PGSQL_ROOT} ABSOLUTE)
-
-  foreach(test_name ${TESTS})
-    add_executable(${test_name} ${OSM2PGSQL_ROOT}/tests/${test_name}.cpp)
-    target_link_libraries(${test_name} osm2pgsql_lib common-pg middle-tests)
-    add_test(NAME ${test_name} COMMAND ${test_name}
-         WORKING_DIRECTORY ${srcdir})
-  endforeach(test_name)
-
-  add_test(NAME regression-test-pbf COMMAND python tests/regression-test.py -f tests/liechtenstein-2013-08-03.osm.pbf 
-         WORKING_DIRECTORY ${srcdir})
-  set_tests_properties(test-parse-xml2 PROPERTIES ENVIRONMENT srcdir=${srcdir})
+  add_subdirectory(tests)
 endif()
 
 # Emulate make check
