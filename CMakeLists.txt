@@ -22,6 +22,8 @@ endif()
 execute_process (COMMAND git describe WORKING_DIRECTORY ${OSM2PGSQL_ROOT} OUTPUT_VARIABLE PACKAGE_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Building osm2pgsql ${PACKAGE_VERSION}")
 
+get_filename_component(OSM2PGSQL_ROOT ${OSM2PGSQL_ROOT} ABSOLUTE)
+
 if (PACKAGE_VERSION VERSION_LESS 0.88.0)
 	message(FATAL_ERROR "osm2pgsql sources of version 0.88.0 or greater required (found ${PACKAGE_VERSION})")
 endif()

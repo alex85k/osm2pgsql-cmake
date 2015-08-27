@@ -27,16 +27,12 @@ set(TESTS
 set(DART_TESTING_TIMEOUT 2000)
 include(Dart)
 
-
-get_filename_component(srcdir ${OSM2PGSQL_ROOT} ABSOLUTE)
-
 foreach(test_name ${TESTS})
   add_executable(${test_name} ${OSM2PGSQL_ROOT}/tests/${test_name}.cpp)
   target_link_libraries(${test_name} osm2pgsql_lib common-pg middle-tests)
   add_test(NAME ${test_name} COMMAND ${test_name}
-           WORKING_DIRECTORY ${srcdir})
+           WORKING_DIRECTORY ${OSM2PGSQL_ROOT})
 endforeach(test_name)
 
 add_test(NAME regression-test-pbf COMMAND python tests/regression-test.py -f tests/liechtenstein-2013-08-03.osm.pbf
-         WORKING_DIRECTORY ${srcdir})
-set_tests_properties(test-parse-xml2 PROPERTIES ENVIRONMENT srcdir=${srcdir})
+         WORKING_DIRECTORY ${OSM2PGSQL_ROOT})
