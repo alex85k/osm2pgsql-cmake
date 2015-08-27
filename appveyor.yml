@@ -63,10 +63,10 @@ after_build:
   - 7z a c:\build\osm2pgsql_%Configuration%.zip osm2pgsql-cpp-bin -tzip
 
 #test: off
-test_script:
-  - set PATH=c:\build\osm2pgsql-cpp-bin;%PATH%
-  - cd c:\build
-  - ctest -VV
+#test_script:
+#  - set PATH=c:\build\osm2pgsql-cpp-bin;%PATH%
+#  - cd c:\build
+#  - ctest -VV
 
 deploy_script:
   - cd c:\build
