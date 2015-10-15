@@ -40,6 +40,7 @@ if ( MSVC )
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:30000000")
 else()
   add_compile_options(-Wall)
+  add_compile_options(-std=c++11)
 endif()
 
 option(EXTERNAL_LIBOSMIUM "Do not use the bundled libosmium" OFF)
